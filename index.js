@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express()
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = 5000;
 
 require('dotenv').config();
@@ -71,44 +71,50 @@ async function run() {
       }
     });
 
-    app.get("/api/tasks/:id", async (req, res) => {
-      try {
-        const id = req.params.id;
+    app.get("/mytasks/:id", async (req, res) => {
+      const { id } = req.params
+      const result = await tasksCollection.findOne({ _id: new ObjectId(id) })
+      res.json(result)
+    })
 
-        if (!ObjectId.isValid(id)) {
-          return res.status(400).send({ error: true, message: "Invalid Task ID format" });
-        }
-        const taskArray = await tasksCollection.aggregate([
-          { $match: { _id: new ObjectId(id) } },
-          {
-            $project: {
-              title: 1,
-              description: 1,
-              budget: 1,
-              deadline: 1,
-              category: 1,
-              status: 1,
-              clientId: 1,
-              client_email: 1,
-              proposals: {
-                $filter: {
-                  input: { $ifNull: ["$proposals", []] },
-                  as: "proposal",
-                  cond: { $ne: ["$$proposal.status", "Rejected"] }
-                }
-              }
-            }
-          }
-        ]).toArray();
-        if (!taskArray || taskArray.length === 0) {
-          return res.status(404).send({ error: true, message: "Task not found" });
-        }
-        res.send(taskArray[0]);
-      } catch (error) {
-        console.error("Error fetching single task:", error);
-        res.status(500).send({ error: true, message: "Internal server error" });
-      }
-    });
+    // app.get("/mytasks/:id", async (req, res) => {
+    //   try {
+    //     const id = req.params.id;
+
+    //     if (!ObjectId.isValid(id)) {
+    //       return res.status(400).send({ error: true, message: "Invalid Task ID format" });
+    //     }
+    //     const taskArray = await tasksCollection.aggregate([
+    //       { $match: { _id: new ObjectId(id) } },
+    //       {
+    //         $project: {
+    //           title: 1,
+    //           description: 1,
+    //           budget: 1,
+    //           deadline: 1,
+    //           category: 1,
+    //           status: 1,
+    //           clientId: 1,
+    //           client_email: 1,
+    //           proposals: {
+    //             $filter: {
+    //               input: { $ifNull: ["$proposals", []] },
+    //               as: "proposal",
+    //               cond: { $ne: ["$$proposal.status", "Rejected"] }
+    //             }
+    //           }
+    //         }
+    //       }
+    //     ]).toArray();
+    //     if (!taskArray || taskArray.length === 0) {
+    //       return res.status(404).send({ error: true, message: "Task not found" });
+    //     }
+    //     res.send(taskArray[0]);
+    //   } catch (error) {
+    //     console.error("Error fetching single task:", error);
+    //     res.status(500).send({ error: true, message: "Internal server error" });
+    //   }
+    // });
 
     // get delete 
     app.delete("/api/tasks/:id", async (req, res) => {
@@ -153,7 +159,7 @@ async function run() {
     });
 
     // get update task
-    app.put("/api/tasks/:id", async (req, res) => {
+    app.put("/mytasks/:id", async (req, res) => {
       try {
         const { id } = req.params;
         const updatedTask = req.body;
@@ -207,146 +213,146 @@ async function run() {
     });
 
     // my proposal
-    app.get("/api/my-proposals", async (req, res) => {
-      try {
-        const { email } = req.query;
+    // app.get("/api/my-proposals", async (req, res) => {
+    //   try {
+    //     const { email } = req.query;
 
-        if (!email) {
-          return res.status(400).send({ error: true, message: "Freelancer email is required" });
-        }
-        const proposals = await tasksCollection.aggregate([
-          { $match: { "proposals.freelancerEmail": email } },
-          { $unwind: "$proposals" },
-          { $match: { "proposals.freelancerEmail": email } },
-          {
-            $project: {
-              _id: 0,
-              taskId: "$_id",
-              taskTitle: "$title",
-              taskBudget: "$budget",
-              taskDeadline: "$deadline",
-              taskStatus: "$status",
-              proposalId: "$proposals.proposalId",
-              proposedBudget: "$proposals.proposedBudget",
-              estimatedDays: "$proposals.estimatedDays",
-              coverNote: "$proposals.coverNote",
-              status: "$proposals.status",
-              createdAt: "$proposals.createdAt"
-            }
-          },
-          { $sort: { createdAt: -1 } }
-        ]).toArray();
+    //     if (!email) {
+    //       return res.status(400).send({ error: true, message: "Freelancer email is required" });
+    //     }
+    //     const proposals = await tasksCollection.aggregate([
+    //       { $match: { "proposals.freelancerEmail": email } },
+    //       { $unwind: "$proposals" },
+    //       { $match: { "proposals.freelancerEmail": email } },
+    //       {
+    //         $project: {
+    //           _id: 0,
+    //           taskId: "$_id",
+    //           taskTitle: "$title",
+    //           taskBudget: "$budget",
+    //           taskDeadline: "$deadline",
+    //           taskStatus: "$status",
+    //           proposalId: "$proposals.proposalId",
+    //           proposedBudget: "$proposals.proposedBudget",
+    //           estimatedDays: "$proposals.estimatedDays",
+    //           coverNote: "$proposals.coverNote",
+    //           status: "$proposals.status",
+    //           createdAt: "$proposals.createdAt"
+    //         }
+    //       },
+    //       { $sort: { createdAt: -1 } }
+    //     ]).toArray();
 
-        res.send(proposals);
-      } catch (error) {
-        console.error("Error fetching freelancer proposals:", error);
-        res.status(500).send({ error: true, message: "Internal server error" });
-      }
-    });
+    //     res.send(proposals);
+    //   } catch (error) {
+    //     console.error("Error fetching freelancer proposals:", error);
+    //     res.status(500).send({ error: true, message: "Internal server error" });
+    //   }
+    // });
 
     // post proposals
-    app.post("/api/proposals", async (req, res) => {
-      try {
-        const { taskId, proposedBudget, estimatedDays, coverNote, freelancerEmail } = req.body;
-        const newProposal = {
-          proposalId: new ObjectId(),
-          freelancerEmail: freelancerEmail || "qisykapa@mailinator.com",
-          proposedBudget: Number(proposedBudget),
-          estimatedDays: Number(estimatedDays),
-          coverNote,
-          status: "Pending",
-          createdAt: new Date()
-        };
-        const filter = { _id: new ObjectId(taskId) };
-        const updateDoc = {
-          $push: { proposals: newProposal }
-        };
-        const result = await tasksCollection.updateOne(filter, updateDoc);
-        res.status(201).send({ success: true, message: "Proposal submitted successfully", data: newProposal });
-      } catch (error) {
-        res.status(500).send({ error: true, message: "Internal server error" });
-      }
-    }
-    );
+    // app.post("/api/proposals", async (req, res) => {
+    //   try {
+    //     const { taskId, proposedBudget, estimatedDays, coverNote, freelancerEmail } = req.body;
+    //     const newProposal = {
+    //       proposalId: new ObjectId(),
+    //       freelancerEmail: freelancerEmail || "qisykapa@mailinator.com",
+    //       proposedBudget: Number(proposedBudget),
+    //       estimatedDays: Number(estimatedDays),
+    //       coverNote,
+    //       status: "Pending",
+    //       createdAt: new Date()
+    //     };
+    //     const filter = { _id: new ObjectId(taskId) };
+    //     const updateDoc = {
+    //       $push: { proposals: newProposal }
+    //     };
+    //     const result = await tasksCollection.updateOne(filter, updateDoc);
+    //     res.status(201).send({ success: true, message: "Proposal submitted successfully", data: newProposal });
+    //   } catch (error) {
+    //     res.status(500).send({ error: true, message: "Internal server error" });
+    //   }
+    // }
+    // );
 
-    app.put("/api/proposals/:taskId/:proposalId", async (req, res) => {
-      try {
-        const { taskId, proposalId } = req.params;
-        const { status } = req.body;
-        if (!ObjectId.isValid(taskId) || !ObjectId.isValid(proposalId)) {
-          return res.status(400).send({ error: true, message: "Invalid Task ID or Proposal ID format" });
-        }
-        if (!status) {
-          return res.status(400).send({ error: true, message: "Status is required" });
-        }
-        const filter = {
-          _id: new ObjectId(taskId),
-          "proposals.proposalId": new ObjectId(proposalId)
-        };
-        const updateDoc = {
-          $set: { "proposals.$.status": status }
-        };
-        const result = await tasksCollection.updateOne(filter, updateDoc);
+    // app.put("/api/proposals/:taskId/:proposalId", async (req, res) => {
+    //   try {
+    //     const { taskId, proposalId } = req.params;
+    //     const { status } = req.body;
+    //     if (!ObjectId.isValid(taskId) || !ObjectId.isValid(proposalId)) {
+    //       return res.status(400).send({ error: true, message: "Invalid Task ID or Proposal ID format" });
+    //     }
+    //     if (!status) {
+    //       return res.status(400).send({ error: true, message: "Status is required" });
+    //     }
+    //     const filter = {
+    //       _id: new ObjectId(taskId),
+    //       "proposals.proposalId": new ObjectId(proposalId)
+    //     };
+    //     const updateDoc = {
+    //       $set: { "proposals.$.status": status }
+    //     };
+    //     const result = await tasksCollection.updateOne(filter, updateDoc);
 
-        if (result.matchedCount === 0) {
-          return res.status(404).send({ error: true, message: "Task or Proposal not found" });
-        }
-        res.status(200).send({ success: true, message: `Proposal status updated to ${status}` });
-      } catch (error) {
-        console.error("Error updating proposal status:", error);
-        res.status(500).send({ error: true, message: "Internal server error" });
-      }
-    });
+    //     if (result.matchedCount === 0) {
+    //       return res.status(404).send({ error: true, message: "Task or Proposal not found" });
+    //     }
+    //     res.status(200).send({ success: true, message: `Proposal status updated to ${status}` });
+    //   } catch (error) {
+    //     console.error("Error updating proposal status:", error);
+    //     res.status(500).send({ error: true, message: "Internal server error" });
+    //   }
+    // });
 
     // propasal detailes
-    app.get("/api/proposals/details/:proposalId", async (req, res) => {
-      try {
-        const { proposalId } = req.params;
-        if (!ObjectId.isValid(proposalId)) {
-          return res.status(400).send({
-            success: false,
-            message: "Invalid Proposal ID format"
-          });
-        }
-        const proposalData = await tasksCollection.aggregate([
-          { $match: { "proposals.proposalId": new ObjectId(proposalId) } },
-          { $unwind: "$proposals" },
-          { $match: { "proposals.proposalId": new ObjectId(proposalId) } },
-          {
-            $project: {
-              _id: 0,
-              taskId: "$_id",
-              taskTitle: "$title",
-              taskBudget: "$budget",
-              taskDeadline: "$deadline",
-              proposalId: "$proposals.proposalId",
-              freelancerEmail: "$proposals.freelancerEmail",
-              proposedBudget: "$proposals.proposedBudget",
-              estimatedDays: "$proposals.estimatedDays",
-              coverNote: "$proposals.coverNote",
-              status: "$proposals.status",
-              createdAt: "$proposals.createdAt"
-            }
-          }
-        ]).toArray();
-        if (!proposalData || proposalData.length === 0) {
-          return res.status(404).send({
-            success: false,
-            message: "Proposal not found"
-          });
-        }
-        res.status(200).send({
-          success: true,
-          data: proposalData[0]
-        });
-      } catch (error) {
-        console.error("Error fetching single proposal details:", error);
-        res.status(500).send({
-          success: false,
-          message: "Internal server error"
-        });
-      }
-    });
+    // app.get("/api/proposals/details/:proposalId", async (req, res) => {
+    //   try {
+    //     const { proposalId } = req.params;
+    //     if (!ObjectId.isValid(proposalId)) {
+    //       return res.status(400).send({
+    //         success: false,
+    //         message: "Invalid Proposal ID format"
+    //       });
+    //     }
+    //     const proposalData = await tasksCollection.aggregate([
+    //       { $match: { "proposals.proposalId": new ObjectId(proposalId) } },
+    //       { $unwind: "$proposals" },
+    //       { $match: { "proposals.proposalId": new ObjectId(proposalId) } },
+    //       {
+    //         $project: {
+    //           _id: 0,
+    //           taskId: "$_id",
+    //           taskTitle: "$title",
+    //           taskBudget: "$budget",
+    //           taskDeadline: "$deadline",
+    //           proposalId: "$proposals.proposalId",
+    //           freelancerEmail: "$proposals.freelancerEmail",
+    //           proposedBudget: "$proposals.proposedBudget",
+    //           estimatedDays: "$proposals.estimatedDays",
+    //           coverNote: "$proposals.coverNote",
+    //           status: "$proposals.status",
+    //           createdAt: "$proposals.createdAt"
+    //         }
+    //       }
+    //     ]).toArray();
+    //     if (!proposalData || proposalData.length === 0) {
+    //       return res.status(404).send({
+    //         success: false,
+    //         message: "Proposal not found"
+    //       });
+    //     }
+    //     res.status(200).send({
+    //       success: true,
+    //       data: proposalData[0]
+    //     });
+    //   } catch (error) {
+    //     console.error("Error fetching single proposal details:", error);
+    //     res.status(500).send({
+    //       success: false,
+    //       message: "Internal server error"
+    //     });
+    //   }
+    // });
 
 
 
